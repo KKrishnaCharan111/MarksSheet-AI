@@ -3,6 +3,9 @@
 > **Automated Student Answer-Sheet Marks Extraction & Formatted Excel Export**  
 > Built for university & college educators to eliminate tedious manual score entry from handwritten answer scripts.
 
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/KKrishnaCharan111/MarksSheet-AI&env=GEMINI_API_KEY,GEMINI_MODEL&envDescription=Google%20Gemini%20API%20Key%20from%20Google%20AI%20Studio&envLink=https://aistudio.google.com/)
+[![Deploy to Netlify](https://www.netlify.com/img/deploy/button.svg)](https://app.netlify.com/start/deploy?repository=https://github.com/KKrishnaCharan111/MarksSheet-AI)
+
 ---
 
 ## 🌟 Key Features
