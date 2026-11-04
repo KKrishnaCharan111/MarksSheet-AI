@@ -26,6 +26,12 @@ yarn-error.log*
 # local env files
 .env*.local
 
+# local data & extractions
+/extracted_pages/
+extracted_results.json
+*.xlsx
+!sample-marks.xlsx
+
 # vercel
 .vercel
 
