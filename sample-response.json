@@ -1,0 +1,90 @@
+{
+  "status": "success",
+  "data": {
+    "name": "ARUN KUMAR R",
+    "usn": "1MS23CS015",
+    "questions": [
+      {
+        "q_no": "1a",
+        "marks": 8.5,
+        "max_marks": 10
+      },
+      {
+        "q_no": "1b",
+        "marks": 9,
+        "max_marks": 10
+      },
+      {
+        "q_no": "2a",
+        "marks": 7.5,
+        "max_marks": 10
+      },
+      {
+        "q_no": "2b",
+        "marks": 8,
+        "max_marks": 10
+      },
+      {
+        "q_no": "3a",
+        "marks": 9,
+        "max_marks": 10
+      }
+    ],
+    "total": 42,
+    "confidence": 0.96,
+    "uncertain_fields": []
+  },
+  "validation": {
+    "computed_total": 42,
+    "total_mismatch": false,
+    "usn_valid": true,
+    "is_absent": false
+  },
+  "edge_case_examples": {
+    "crossed_out_marks": {
+      "name": "BHAVANA S",
+      "usn": "1MS23CS028",
+      "questions": [
+        { "q_no": "1a", "marks": 7, "max_marks": 10 },
+        { "q_no": "1b", "marks": 6.5, "max_marks": 10 },
+        { "q_no": "2a", "marks": 8.5, "max_marks": 10 },
+        { "q_no": "2b", "marks": 7, "max_marks": 10 },
+        { "q_no": "3a", "marks": 6, "max_marks": 10 }
+      ],
+      "total": 35,
+      "confidence": 0.82,
+      "uncertain_fields": ["q_no: 1b (overwritten from 4 to 6.5)"]
+    },
+    "total_mismatch": {
+      "name": "CHIRAG MUKHERJEE",
+      "usn": "1MS23CS034",
+      "questions": [
+        { "q_no": "1a", "marks": 9.5, "max_marks": 10 },
+        { "q_no": "1b", "marks": 8, "max_marks": 10 },
+        { "q_no": "2a", "marks": 7.5, "max_marks": 10 },
+        { "q_no": "2b", "marks": 9, "max_marks": 10 },
+        { "q_no": "3a", "marks": 8.5, "max_marks": 10 }
+      ],
+      "total": 45,
+      "computed_total": 42.5,
+      "confidence": 0.94,
+      "total_mismatch": true,
+      "total_mismatch_reason": "Written total (45) differs from computed sum (42.5)"
+    },
+    "absent_student": {
+      "name": "DARSHAN GOWDA",
+      "usn": "1MS23CS042",
+      "questions": [
+        { "q_no": "1a", "marks": "A", "max_marks": 10 },
+        { "q_no": "1b", "marks": "A", "max_marks": 10 },
+        { "q_no": "2a", "marks": "A", "max_marks": 10 },
+        { "q_no": "2b", "marks": "A", "max_marks": 10 },
+        { "q_no": "3a", "marks": "A", "max_marks": 10 }
+      ],
+      "total": "A",
+      "computed_total": 0,
+      "confidence": 0.98,
+      "is_absent": true
+    }
+  }
+}
