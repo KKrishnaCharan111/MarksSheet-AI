@@ -8,6 +8,7 @@ import {
   Settings,
   Sparkles,
   RotateCcw,
+  Key,
 } from 'lucide-react';
 import { ExamTemplate } from '@/types';
 
@@ -15,6 +16,7 @@ interface NavbarProps {
   currentStep: number;
   template: ExamTemplate;
   onOpenTemplateModal: () => void;
+  onOpenApiKeyModal: () => void;
   onResetBatch: () => void;
   isDarkMode: boolean;
   onToggleDarkMode: () => void;
@@ -25,6 +27,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   currentStep,
   template,
   onOpenTemplateModal,
+  onOpenApiKeyModal,
   onResetBatch,
   isDarkMode,
   onToggleDarkMode,
@@ -55,6 +58,16 @@ export const Navbar: React.FC<NavbarProps> = ({
 
         {/* Center / Right controls */}
         <div className="flex items-center gap-2 sm:gap-3">
+          {/* API Key Modal Button */}
+          <button
+            onClick={onOpenApiKeyModal}
+            className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 transition"
+            title="Configure Google Gemini API Key"
+          >
+            <Key className="w-3.5 h-3.5 text-amber-500" />
+            <span className="hidden sm:inline">API Key</span>
+          </button>
+
           {/* Active Template Badge & Button */}
           <button
             onClick={onOpenTemplateModal}
@@ -63,7 +76,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           >
             <Settings className="w-3.5 h-3.5 text-indigo-500" />
             <span className="hidden md:inline font-semibold text-slate-500 dark:text-slate-400">Template:</span>
-            <span className="truncate max-w-[130px] sm:max-w-[180px] font-semibold">{template.name}</span>
+            <span className="truncate max-w-[120px] sm:max-w-[170px] font-semibold">{template.name}</span>
           </button>
 
           {/* Reset Batch (if students exist) */}

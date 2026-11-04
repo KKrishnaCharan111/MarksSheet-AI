@@ -15,12 +15,14 @@ import {
   validateUsn,
 } from '@/lib/templates';
 import { processInParallel, QueueTask } from '@/lib/queue';
+import { extractMarksWithVision } from '@/lib/gemini';
 import { Navbar } from '@/components/Navbar';
 import { StepIndicator } from '@/components/StepIndicator';
 import { UploadStep, PendingPageItem } from '@/components/UploadStep';
 import { ReviewStep } from '@/components/ReviewStep';
 import { ExportStep } from '@/components/ExportStep';
 import { TemplateModal } from '@/components/TemplateModal';
+import { ApiKeyModal } from '@/components/ApiKeyModal';
 
 export default function Home() {
   const [currentStep, setCurrentStep] = useState<number>(1);
@@ -31,6 +33,7 @@ export default function Home() {
   const [templates, setTemplates] = useState<ExamTemplate[]>(DEFAULT_TEMPLATES);
   const [activeTemplate, setActiveTemplate] = useState<ExamTemplate>(DEFAULT_TEMPLATES[0]);
   const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
+  const [isApiKeyModalOpen, setIsApiKeyModalOpen] = useState(false);
 
   // Dark mode
   const [isDarkMode, setIsDarkMode] = useState(false);
@@ -72,7 +75,7 @@ export default function Home() {
     });
   };
 
-  // Run Batch Extraction
+  // Run Batch Extraction directly in browser
   const handleStartExtraction = async () => {
     if (pages.length === 0) return;
 
@@ -80,46 +83,26 @@ export default function Home() {
     setProgressPercent(0);
     setCurrentProcessingText(`Preparing extraction queue (Concurrency: ${concurrency})...`);
 
-    // Mark all pages as idle/extracting
+    // Mark all pages as idle
     setPages((prev) => prev.map((p) => ({ ...p, status: 'idle' })));
 
     const extractedStudents: StudentScore[] = [];
 
     // Create parallel tasks
-    const tasks: QueueTask<PendingPageItem, ExtractionResponse>[] = pages.map((page, idx) => ({
+    const tasks: QueueTask<PendingPageItem, ExtractionResponse>[] = pages.map((page) => ({
       id: page.id,
       item: page,
-      retries: 2,
+      retries: 1,
       execute: async (item) => {
-        // Update page status to extracting
         setPages((prev) =>
           prev.map((p) => (p.id === item.id ? { ...p, status: 'extracting' } : p))
         );
 
-        const res = await fetch('/api/extract', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            imageBase64: item.dataUrl,
-            mimeType: 'image/jpeg',
-            templateContext: {
-              questions: activeTemplate.questions,
-              usnPattern: activeTemplate.usnPattern,
-            },
-          }),
+        // Call Gemini Vision directly (works client-side & static export)
+        return await extractMarksWithVision(item.dataUrl, 'image/jpeg', {
+          questions: activeTemplate.questions,
+          usnPattern: activeTemplate.usnPattern,
         });
-
-        if (!res.ok) {
-          const errData = await res.json().catch(() => ({}));
-          throw new Error(errData.error || `Server responded with ${res.status}`);
-        }
-
-        const json = await res.json();
-        if (!json.success || !json.data) {
-          throw new Error(json.error || 'Invalid extraction response');
-        }
-
-        return json.data as ExtractionResponse;
       },
     }));
 
@@ -183,7 +166,6 @@ export default function Home() {
           prev.map((p) => (p.id === page.id ? { ...p, status: 'completed' } : p))
         );
       } else {
-        // Error on this page
         const errMsg = taskResult?.error?.message || 'Extraction failed';
         setPages((prev) =>
           prev.map((p) =>
@@ -191,7 +173,6 @@ export default function Home() {
           )
         );
 
-        // Add fallback entry so teacher can manually enter
         extractedStudents.push({
           id: page.id,
           pageNumber: page.pageNumber,
@@ -221,7 +202,7 @@ export default function Home() {
     setIsProcessing(false);
     setCurrentProcessingText('');
 
-    // Smoothly transition to Review step
+    // Transition to Review step
     setCurrentStep(2);
   };
 
@@ -233,24 +214,11 @@ export default function Home() {
     setReExtractingId(studentId);
 
     try {
-      const res = await fetch('/api/extract', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          imageBase64: student.imageUrl,
-          mimeType: 'image/jpeg',
-          templateContext: {
-            questions: activeTemplate.questions,
-            usnPattern: activeTemplate.usnPattern,
-          },
-        }),
+      const raw = await extractMarksWithVision(student.imageUrl, 'image/jpeg', {
+        questions: activeTemplate.questions,
+        usnPattern: activeTemplate.usnPattern,
       });
 
-      if (!res.ok) throw new Error('Re-extraction failed');
-      const json = await res.json();
-      if (!json.success || !json.data) throw new Error(json.error || 'Failed');
-
-      const raw = json.data as ExtractionResponse;
       const computed = calculateSum(raw.questions);
       const isAbsent = checkIfAbsent(raw.questions, raw.total);
 
@@ -313,6 +281,7 @@ export default function Home() {
         currentStep={currentStep}
         template={activeTemplate}
         onOpenTemplateModal={() => setIsTemplateModalOpen(true)}
+        onOpenApiKeyModal={() => setIsApiKeyModalOpen(true)}
         onResetBatch={handleResetBatch}
         isDarkMode={isDarkMode}
         onToggleDarkMode={toggleDarkMode}
@@ -373,11 +342,17 @@ export default function Home() {
         setActiveTemplate={setActiveTemplate}
       />
 
+      {/* API Key Modal */}
+      <ApiKeyModal
+        isOpen={isApiKeyModalOpen}
+        onClose={() => setIsApiKeyModalOpen(false)}
+      />
+
       {/* Minimal Footer */}
       <footer className="border-t border-slate-200 dark:border-slate-800 py-4 text-center text-xs text-slate-500 dark:text-slate-400 bg-white/50 dark:bg-slate-900/50">
         <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
           <span>MarksSheet AI • Intelligent Exam OCR & Excel Exporter</span>
-          <span className="text-slate-400">Processed locally in browser & secure transient vision API</span>
+          <span className="text-slate-400">Processed locally in browser & direct Gemini Vision API</span>
         </div>
       </footer>
     </div>

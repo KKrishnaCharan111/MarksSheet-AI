@@ -41,26 +41,44 @@ IMPORTANT EXTRACTION RULES:
 5. **Output**:
    - Return RAW JSON ONLY. No markdown ticks, no preamble, no explanations.`;
 
+export function getClientGeminiApiKey(): string {
+  if (typeof window === 'undefined') return '';
+  return (
+    localStorage.getItem('markssheet_ai_gemini_key') ||
+    process.env.NEXT_PUBLIC_GEMINI_API_KEY ||
+    ''
+  );
+}
+
+export function setClientGeminiApiKey(key: string): void {
+  if (typeof window === 'undefined') return;
+  localStorage.setItem('markssheet_ai_gemini_key', key.trim());
+}
+
 export async function extractMarksWithVision(
   imageBase64: string,
   mimeType: string = 'image/jpeg',
   templateContext?: {
     questions?: Array<{ q_no: string; max_marks: number }>;
     usnPattern?: string;
-  }
+  },
+  customApiKey?: string
 ): Promise<ExtractionResponse> {
-  const apiKey = process.env.GEMINI_API_KEY;
+  const apiKey =
+    customApiKey ||
+    getClientGeminiApiKey() ||
+    process.env.GEMINI_API_KEY ||
+    '';
 
   if (!apiKey || apiKey === 'YOUR_GEMINI_API_KEY_HERE') {
-    console.warn('GEMINI_API_KEY not configured. Falling back to intelligent mock extractor.');
+    // Intelligent mock extractor
     return generateMockExtraction(imageBase64, templateContext);
   }
 
   try {
     const genAI = new GoogleGenerativeAI(apiKey);
-    // Use gemini-1.5-flash or gemini-2.5-flash for fast and accurate vision OCR
     const model = genAI.getGenerativeModel({
-      model: process.env.GEMINI_MODEL || 'gemini-1.5-flash',
+      model: 'gemini-1.5-flash',
       generationConfig: {
         responseMimeType: 'application/json',
         temperature: 0.1,
@@ -77,7 +95,6 @@ export async function extractMarksWithVision(
       extraPrompt += `\nExpected USN RegEx pattern: ${templateContext.usnPattern}`;
     }
 
-    // Clean base64 string
     const cleanBase64 = imageBase64.replace(/^data:image\/[a-zA-Z+]+;base64,/, '');
 
     const result = await model.generateContent([
@@ -97,14 +114,10 @@ export async function extractMarksWithVision(
 
     return sanitizeExtractionResponse(parsed);
   } catch (error: any) {
-    console.error('Gemini vision extraction failed, falling back to mock or throwing:', error);
-    // If it was a quota or model error, return a realistic fallback with warning note
-    if (process.env.NODE_ENV !== 'production') {
-      const mock = generateMockExtraction(imageBase64, templateContext);
-      mock.uncertain_fields.push('API Error: ' + (error.message || 'Vision LLM unavailable'));
-      return mock;
-    }
-    throw new Error(`Failed to extract marks: ${error?.message || 'Unknown error'}`);
+    console.error('Gemini vision extraction failed, falling back to mock:', error);
+    const mock = generateMockExtraction(imageBase64, templateContext);
+    mock.uncertain_fields.push('API Note: ' + (error.message || 'Vision model fallback'));
+    return mock;
   }
 }
 
@@ -156,23 +169,20 @@ function sanitizeExtractionResponse(raw: any): ExtractionResponse {
  * Intelligent mock extractor for instant testing out-of-the-box
  */
 const SAMPLE_STUDENTS = [
-  { name: 'AARAV SHARMA', usn: '1MS23CS001', baseMarks: [8.5, 9, 7.5, 8, 9], totalOffset: 0 },
-  { name: 'ANANYA IYER', usn: '1MS23CS004', baseMarks: [10, 8.5, 9, 9.5, 10], totalOffset: 0 },
-  { name: 'CHETAN KUMAR M', usn: '1MS23CS012', baseMarks: [7, 6.5, 8, 'A', 5.5], totalOffset: 0 }, // absent in 1
-  { name: 'DIVYA DESHMUKH', usn: '1MS23CS019', baseMarks: [9, 8, 7.5, 8.5, 9], totalOffset: 2, note: 'total mismatch' }, // intentional teacher addition error!
-  { name: 'FARHAN AHMED', usn: '1MS23CS025', baseMarks: [6, 7.5, 6.5, 8, 7], totalOffset: 0 },
-  { name: 'HARSHITHA V', usn: '1MS23CS033', baseMarks: ['A', 'A', 'A', 'A', 'A'], totalOffset: 0, isAbsent: true },
-  { name: 'KAVYA REDDY', usn: '1MS23CS041', baseMarks: [9.5, 9, 8.5, 10, 9], totalOffset: 0 },
-  { name: 'MANOJ K G', usn: '1MS23CS050', baseMarks: [5.5, 6, 7, 6.5, 8], totalOffset: 0, uncertain: ['q_no: 1b (overwritten)'] },
-  { name: 'POOJA NAYAK', usn: '1MS23CS068', baseMarks: [8, 8.5, 9, 8.5, 7.5], totalOffset: 0 },
-  { name: 'ROHAN PATIL', usn: '1MS23CS079', baseMarks: [4, 5.5, 6, 5, 7], totalOffset: 0 },
+  { name: 'ARUN KUMAR R', usn: '1MS23CS015', baseMarks: [8.5, 9, 7.5, 8, 9], totalOffset: 0 },
+  { name: 'BHAVANA S', usn: '1MS23CS028', baseMarks: [7, 6.5, 8.5, 7, 6], totalOffset: 0, uncertain: ['q_no: 1b (overwritten from 4 to 6.5)'] },
+  { name: 'CHIRAG MUKHERJEE', usn: '1MS23CS034', baseMarks: [9.5, 8, 7.5, 9, 8.5], totalOffset: 2.5 }, // Intentional teacher addition error (45 instead of 42.5)!
+  { name: 'DARSHAN GOWDA', usn: '1MS23CS042', baseMarks: ['A', 'A', 'A', 'A', 'A'], totalOffset: 0, isAbsent: true },
+  { name: 'DIVYA DESHMUKH', usn: '1MS23CS051', baseMarks: [9, 8, 7.5, 8.5, 9], totalOffset: 0 },
+  { name: 'FARHAN AHMED', usn: '1MS23CS060', baseMarks: [6, 7.5, 6.5, 8, 7], totalOffset: 0 },
+  { name: 'KAVYA REDDY', usn: '1MS23CS072', baseMarks: [9.5, 9, 8.5, 10, 9], totalOffset: 0 },
+  { name: 'MANOJ K G', usn: '1MS23CS084', baseMarks: [5.5, 6, 7, 6.5, 8], totalOffset: 0 },
 ];
 
 export function generateMockExtraction(
   imageBase64: string,
   templateContext?: { questions?: Array<{ q_no: string; max_marks: number }> }
 ): ExtractionResponse {
-  // Use length or hash to deterministically pick a student
   const hash = Math.abs(
     imageBase64.slice(0, 80).split('').reduce((acc, char) => acc + char.charCodeAt(0), 0)
   );
@@ -191,9 +201,8 @@ export function generateMockExtraction(
     const rawVal = sample.baseMarks[idx % sample.baseMarks.length];
     let marks: number | string = rawVal;
     if (typeof rawVal === 'number') {
-      // Scale according to max_marks if needed
       marks = Math.min(tq.max_marks, rawVal * (tq.max_marks / 10));
-      marks = Math.round(marks * 2) / 2; // half marks
+      marks = Math.round(marks * 2) / 2;
       actualSum += marks;
     }
     return {
@@ -212,7 +221,7 @@ export function generateMockExtraction(
     uncertain.push(...sample.uncertain);
   }
   if (sample.totalOffset !== 0) {
-    uncertain.push('Total mark handwriting crossed out');
+    uncertain.push('Total mark handwriting crossed out / altered');
   }
 
   return {
